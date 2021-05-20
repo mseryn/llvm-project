@@ -22,6 +22,9 @@ extern omptarget_nvptx_Queue<omptarget_nvptx_ThreadPrivateContext,
                              OMP_STATE_COUNT>
     omptarget_nvptx_device_State[MAX_SM];
 
+// TODO the real type needs to go in here
+RingBuffer<uint32_t> StackTraceBuffer(15);
+
 ////////////////////////////////////////////////////////////////////////////////
 // init entry points
 ////////////////////////////////////////////////////////////////////////////////
@@ -158,6 +161,16 @@ EXTERN void __kmpc_spmd_kernel_deinit_v2(int16_t RequiresOMPRuntime) {
 EXTERN int8_t __kmpc_is_spmd_exec_mode() {
   PRINT0(LD_IO | LD_PAR, "call to __kmpc_is_spmd_exec_mode\n");
   return isSPMDMode();
+}
+
+// Push and pull operations for device stack trace
+// TODO need to modify for actual datatype that will be used
+EXTERN void omp_stack_trace_push(uint32_t data) {
+  StackTraceBuffer.push(data);
+}
+
+EXTERN void omp_stack_trace_pop(uint32_t * data) {
+  *data = StackTraceBuffer.pop();
 }
 
 #pragma omp end declare target
