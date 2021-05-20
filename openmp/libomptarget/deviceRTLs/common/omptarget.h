@@ -342,9 +342,9 @@ INLINE uint32_t __kmpc_impl_popc(uint64_t x) { return __builtin_popcountl(x); }
 // device stack trace components
 ////////////////////////////////////////////////////////////////////////////////
 template <class T>
-class ringBuffer {
+class RingBuffer {
 public:
-  explicit ringBuffer(size_t size) :
+  explicit RingBuffer(size_t size) :
     buf_(std::unique_ptr<T[]>(new T[size])),
     max_size_(size)
   { //empty constructor
