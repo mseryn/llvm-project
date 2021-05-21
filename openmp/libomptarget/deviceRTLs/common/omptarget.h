@@ -348,6 +348,7 @@ public:
     buf_(std::unique_ptr<T[]>(new T[size])),
     max_size_(size)
   { //empty constructor
+// todo - memset contents
   }
 
   void push(T item) {
@@ -371,8 +372,13 @@ public:
 
     return val;
   }
+  bool empty() const
+  {
+    return (!full_ && (head_ == tail_));
+  }
 
 private:
+  std::unique_ptr<T[]> buf_;
   size_t head_ = 0;
   size_t tail_ = 0;
   const size_t max_size_;
