@@ -22,9 +22,6 @@ extern omptarget_nvptx_Queue<omptarget_nvptx_ThreadPrivateContext,
                              OMP_STATE_COUNT>
     omptarget_nvptx_device_State[MAX_SM];
 
-// TODO the real type needs to go in here
-RingBuffer<uint32_t> StackTraceBuffer(15);
-
 ////////////////////////////////////////////////////////////////////////////////
 // init entry points
 ////////////////////////////////////////////////////////////////////////////////

@@ -25,6 +25,10 @@ omptarget_device_environmentTy omptarget_device_environment;
 // global data holding OpenMP state information
 ////////////////////////////////////////////////////////////////////////////////
 
+// Device stack trace buffer
+// TODO the real type needs to go in here
+RingBuffer<uint32_t> StackTraceBuffer(15);
+
 // OpenMP will try to call its ctor if we don't add the attribute explicitly
 [[clang::loader_uninitialized]] omptarget_nvptx_Queue<
     omptarget_nvptx_ThreadPrivateContext, OMP_STATE_COUNT>
