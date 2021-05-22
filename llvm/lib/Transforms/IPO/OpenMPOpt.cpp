@@ -1196,6 +1196,9 @@ private:
       return;
 
     auto &IRBuilder = OMPInfoCache.OMPBuilder;
+    //DenseMap<StringRef, Optional<std::size_t>> SrcLocInds;
+    //SmallString<1024> SrcLocStr;
+    //std::size_t CurInd = 0ul;
     StringMap<Optional<uint64_t>> SrcLocInds;
     SmallString<1024> SrcLocStr;
     uint64_t CurInd = 0ul;
@@ -1219,6 +1222,7 @@ private:
       }
 
       // If the string is already added, get its index. Otherwise add it.
+      //auto &Index = SrcLocInds[Buffer];
       auto &Index = SrcLocInds[Buffer.str().str()];
       if (!Index) {
         Index = CurInd;
@@ -1272,10 +1276,17 @@ private:
 
           // If the string is already added, get its index. Otherwise add it.
 <<<<<<< HEAD
+<<<<<<< HEAD
           auto &Index = SrcLocInds[Buffer.str().str()];
 =======
           auto &Index = SrcLocInds[Buffer];
 >>>>>>> [OpenMP] Add interface for creating stack traces on the device
+=======
+          auto &Index = SrcLocInds[Buffer];
+=======
+          auto &Index = SrcLocInds[Buffer.str().str()];
+>>>>>>> 7aa6b13a4380... [OpenMP] Add interface for creating stack traces on the device
+>>>>>>> resolving cherry-pick conflicts
           if (!Index) {
             Index = CurInd;
             CurInd += Buffer.size() + 1;
