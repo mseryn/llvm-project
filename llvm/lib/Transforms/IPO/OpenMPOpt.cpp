@@ -39,6 +39,13 @@ using namespace omp;
 
 #define DEBUG_TYPE "openmp-opt"
 
+namespace llvm {
+cl::opt<bool> OpenMPStackTrace(
+    "openmp-stack-trace",
+    cl::desc("Creates a stack trace on the target device for debugging"),
+    cl::Hidden, cl::init(false));
+}
+
 static cl::opt<bool> DisableOpenMPOptimizations(
     "openmp-opt-disable", cl::ZeroOrMore,
     cl::desc("Disable OpenMP specific optimizations."), cl::Hidden,
@@ -421,6 +428,8 @@ struct OMPInformationCache : public InformationCache {
 
     // TODO: We should attach the attributes defined in OMPKinds.def.
   }
+  /// Get the device kernel \p Kernels.
+  SmallPtrSetImpl<Kernel> &getKernels() { return Kernels; }
 
   /// Collection of known kernels (\see Kernel) in the module.
   SmallPtrSetImpl<Kernel> &Kernels;
@@ -544,6 +553,8 @@ struct OpenMPOpt {
 
       if (remarksEnabled())
         analysisGlobalization();
+      if (OpenMPStackTrace)
+        createDeviceStackTrace();
     } else {
       if (PrintICVValues)
         printICVs();
@@ -1175,6 +1186,113 @@ private:
 
       RFI.foreachUse(SCC, CheckGlobalization);
     }
+  }
+
+  /// Create a stack trace on the target device. Adds push / pop instructions
+  /// around each function call. The pushed value is an index into a global
+  /// string containing source location information.
+  void createDeviceStackTrace() {
+    if (OMPInfoCache.getKernels().empty())
+      return;
+
+    auto &IRBuilder = OMPInfoCache.OMPBuilder;
+    StringMap<Optional<uint64_t>> SrcLocInds;
+    SmallString<1024> SrcLocStr;
+    uint64_t CurInd = 0ul;
+
+    Function *Push =
+        IRBuilder.getOrCreateRuntimeFunctionPtr(OMPRTL_omp_stack_trace_push);
+    Function *Pop =
+        IRBuilder.getOrCreateRuntimeFunctionPtr(OMPRTL_omp_stack_trace_pop);
+
+    // Add the push / pop instructions inside the kernel.
+    for (Kernel K : OMPInfoCache.getKernels()) {
+      // Build the source information string.
+      SmallString<128> Buffer;
+      if (DiagnosticLocation(K->getSubprogram()).isValid()) {
+        DiagnosticLocation DL = DiagnosticLocation(K->getSubprogram());
+        Buffer.assign({";", K->getName(), ";", DL.getAbsolutePath(), ";",
+                       std::to_string(DL.getLine()), ";",
+                       std::to_string(DL.getColumn()), ";;"});
+      } else {
+        Buffer.assign({";", K->getName(), ";unknown;0;0;;"});
+      }
+
+      // If the string is already added, get its index. Otherwise add it.
+      auto &Index = SrcLocInds[Buffer.str().str()];
+      if (!Index) {
+        Index = CurInd;
+        CurInd += Buffer.size() + 1;
+        SrcLocStr.append(Buffer);
+        SrcLocStr.push_back('\0');
+      }
+
+      auto *CI =
+          ConstantInt::get(Type::getInt64Ty(M.getContext()), Index.getValue());
+
+      CallInst::Create(Push, {CI}, /* NameStr */ "")
+          ->insertBefore(&*K->getEntryBlock().getFirstInsertionPt());
+      for (BasicBlock &BB : *K) {
+        for (Instruction &I : BB) {
+          if (auto *RI = dyn_cast<ReturnInst>(&I))
+            CallInst::Create(Pop, {}, /* NameStr */ "")->insertBefore(RI);
+        }
+      }
+    }
+
+    for (Function &F : M) {
+      for (BasicBlock &BB : F) {
+        for (Instruction &I : BB) {
+          auto *CB = dyn_cast<CallBase>(&I);
+          if (!CB || CB->getCalledFunction() == Push ||
+              CB->getCalledFunction() == Pop)
+            continue;
+
+          // Strip the bitcast if this isn't a regular call.
+          Function *CalledFn = nullptr;
+          if (!CB->getCalledFunction())
+            CalledFn =
+                dyn_cast<Function>(CB->getCalledOperand()->stripPointerCasts());
+          else
+            CalledFn = CB->getCalledFunction();
+
+          // Build the source information string.
+          SmallString<128> Buffer;
+          if (!CalledFn) {
+            Buffer.assign({";", "indirect call", ";unknown;0;0;;"});
+          } else if (DiagnosticLocation(CalledFn->getSubprogram()).isValid()) {
+            DiagnosticLocation DL =
+                DiagnosticLocation(CalledFn->getSubprogram());
+            Buffer.assign({";", CalledFn->getName(), ";", DL.getAbsolutePath(),
+                           ";", std::to_string(DL.getLine()), ";",
+                           std::to_string(DL.getColumn()), ";;"});
+          } else {
+            Buffer.assign({";", CalledFn->getName(), ";unknown;0;0;;"});
+          }
+
+          // If the string is already added, get its index. Otherwise add it.
+          auto &Index = SrcLocInds[Buffer.str().str()];
+          if (!Index) {
+            Index = CurInd;
+            CurInd += Buffer.size() + 1;
+            SrcLocStr.append(Buffer);
+            SrcLocStr.push_back('\0');
+          }
+
+          auto *CI = ConstantInt::get(Type::getInt64Ty(M.getContext()),
+                                      Index.getValue());
+          CallInst::Create(Push, {CI}, /* NameStr */ "")->insertBefore(CB);
+          CallInst::Create(Pop, {}, /* NameStr */ "")->insertAfter(CB);
+        }
+      }
+    }
+
+    GlobalVariable *GV = IRBuilder.Builder.CreateGlobalString(
+        SrcLocStr,
+        /* Name */ "__omp_stack_trace_data",
+        /* AddressSpace */ 0, &M);
+    GV->setLinkage(GlobalVariable::ExternalLinkage);
+    GV->setAlignment(Align(8));
   }
 
   /// Maps the values stored in the offload arrays passed as arguments to
