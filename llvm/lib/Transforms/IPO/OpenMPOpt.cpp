@@ -1271,7 +1271,11 @@ private:
           }
 
           // If the string is already added, get its index. Otherwise add it.
+<<<<<<< HEAD
           auto &Index = SrcLocInds[Buffer.str().str()];
+=======
+          auto &Index = SrcLocInds[Buffer];
+>>>>>>> [OpenMP] Add interface for creating stack traces on the device
           if (!Index) {
             Index = CurInd;
             CurInd += Buffer.size() + 1;
