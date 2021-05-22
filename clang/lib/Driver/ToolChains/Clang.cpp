@@ -5637,6 +5637,12 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
                        options::OPT_fno_openmp_cuda_force_full_runtime,
                        /*Default=*/false))
         CmdArgs.push_back("-fopenmp-cuda-force-full-runtime");
+
+      // Enable building stack traces on the device.
+      if (Args.hasArg(options::OPT_fopenmp_target_stack_trace)) {
+        CmdArgs.push_back("-mllvm");
+        CmdArgs.push_back("-openmp-stack-trace");
+      }
       break;
     default:
       // By default, if Clang doesn't know how to generate useful OpenMP code

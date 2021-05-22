@@ -203,5 +203,9 @@ EXTERN int omp_stack_trace_pop(int32_t * data) {
 #undef ring
   return ret;
 }
+//EXTERN void __attribute__((used))
+//omp_stack_trace_push(uint64_t Index) {}
+
+//EXTERN void __attribute__((used)) omp_stack_trace_pop() {}
 
 #pragma omp end declare target

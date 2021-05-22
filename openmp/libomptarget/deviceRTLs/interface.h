@@ -465,5 +465,7 @@ EXTERN void __kmpc_restore_team_static_memory(int16_t isSPMDExecutionMode,
 // Device stack trace functions TODO modify datatype here to match needs
 EXTERN void omp_stack_trace_push(int32_t data);
 EXTERN int omp_stack_trace_pop(int32_t * data);
+//EXTERN void omp_stack_trace_push(uint64_t Index);
+//EXTERN void omp_stack_trace_pop();
 
 #endif
