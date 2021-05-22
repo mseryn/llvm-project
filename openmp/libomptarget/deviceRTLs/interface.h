@@ -462,4 +462,7 @@ EXTERN void __kmpc_get_team_static_memory(int16_t isSPMDExecutionMode,
 EXTERN void __kmpc_restore_team_static_memory(int16_t isSPMDExecutionMode,
                                               int16_t is_shared);
 
+EXTERN void omp_stack_trace_push(uint64_t Index);
+EXTERN void omp_stack_trace_pop();
+
 #endif

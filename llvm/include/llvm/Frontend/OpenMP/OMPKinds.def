@@ -448,6 +448,10 @@ __OMP_RTL(__kmpc_barrier_simple_spmd, false, Void, IdentPtr, Int32)
 __OMP_RTL(__kmpc_warp_active_thread_mask, false, LanemaskTy,)
 __OMP_RTL(__kmpc_syncwarp, false, Void, LanemaskTy)
 
+/// LLVM OpenMP Support Functions
+__OMP_RTL(omp_stack_trace_push, false, Void, Int64)
+__OMP_RTL(omp_stack_trace_pop, false, Void, )
+
 __OMP_RTL(__last, false, Void, )
 
 #undef __OMP_RTL
