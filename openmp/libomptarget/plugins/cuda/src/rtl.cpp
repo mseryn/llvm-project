@@ -23,6 +23,8 @@
 #include "Debug.h"
 #include "omptargetplugin.h"
 
+#include "../../../deviceRTLs/common/omptarget.h"
+
 #define TARGET_NAME CUDA
 #define DEBUG_PREFIX "Target " GETNAME(TARGET_NAME) " RTL"
 
@@ -97,6 +99,8 @@ struct KernelTy {
 /// file later.
 struct omptarget_device_environmentTy {
   int32_t debug_level;
+  ring_buffer_t * StackTraceBuffer;
+  // TODO fix casing
 };
 
 namespace {
@@ -140,6 +144,8 @@ struct DeviceDataTy {
   // OpenMP properties
   int NumTeams = 0;
   int NumThreads = 0;
+  // Stack tracing using ring_buffer_t
+  CUdeviceptr StackBufferPtr;
 };
 
 class StreamManagerTy {
@@ -658,6 +664,29 @@ public:
          DeviceData[DeviceId].ThreadsPerBlock);
       DeviceData[DeviceId].NumTeams = DeviceData[DeviceId].ThreadsPerBlock;
     }
+
+    // Allocating stack trace buffer on device
+    int buffer_capacity = 15;
+    size_t ring_buffer_size = sizeof(ring_buffer_t) + sizeof(int64_t) * buffer_capacity;
+    DeviceData[DeviceID].StackTraceBuffer = dataAlloc(DeviceId, ring_buffer_size, 
+      TARGET_ALLOC_DEVICE);
+
+    // Setting device's stack trace buffer fields
+    ring_buffer_t * initial_stack = malloc(ring_buffer_size);
+    initial_stack->head = 0;
+    initial_stack->tail = 0;
+    initial_stack->is_full = false;
+    initial_stack->capacity = buffer_capacity;
+    initial_stack->is_empty = true;
+    
+    Err = cuMemcpyHtoD(DeviceData[DeviceID].StackTraceBuffer, &initial_stack, 
+      ring_buffer_size);
+    if (Err != CUDA_SUCCESS) {
+      REPORT("Error when copying initial stack trace buffer host to device.");
+      CUDA_ERR_STRING(Err);
+      return nullptr;
+    }
+    free(initial_stack);
 
     return OFFLOAD_SUCCESS;
   }
@@ -1301,6 +1330,72 @@ int32_t __tgt_rtl_synchronize(int32_t device_id,
 void __tgt_rtl_set_info_flag(uint32_t NewInfoLevel) {
   std::atomic<uint32_t> &InfoLevel = getInfoLevelInternal();
   InfoLevel.store(NewInfoLevel);
+}
+
+// Functions to use stack trace buffer - where do these go? TODO
+void omp_stack_trace_push(int32_t data) {
+  ring->is_empty = false;
+  ring->buffer[ring->head] = data;
+  
+  // If buffer is full, wrap tail back to 0 if applicable
+  if (ring->is_full) {
+    if (++(ring->tail) == ring->capacity) {
+      ring->tail = 0;
+    }
+  }
+  // Also wrap the head if applicable
+  if (++(ring->head) == ring->capacity) {
+    ring->head = 0;
+  }
+
+  // Recalculate full status of buffer
+  ring->is_full = (ring->head == ring->tail);
+}
+
+// Functions to use stack trace buffer - where do these go? TODO
+int omp_stack_trace_pop(int32_t * data) {
+  // Returns 1 if buffer empty, 0 otherwise
+  int ret  = 1;
+  if (!ring->is_empty) {
+    // Set the data to the tail
+    if (ring->head == 0) {
+      ring->head = ring->capacity;
+    }
+    ring->head--;
+    *data = ring->buffer[ring->head];
+
+    // Overwrite full status boolean
+    ring->is_full = false;
+
+    ring->is_empty = (ring->head == ring->tail);
+    ret = 0;
+  }
+  return ret;
+}
+
+void __tgt_rtl_get_stack_trace_vector(int32_t device_id, std::vector<int32_t> StackTraceContents) {
+  assert(DeviceRTL.isValidDeviceId(device_id) && "device_id is invalid");
+
+  int x = 0;
+  int buffer_capacity = 15;
+  size_t ring_buffer_size = sizeof(ring_buffer_t) + sizeof(int64_t) * buffer_capacity;
+
+  ring_buffer_t * fetched_stack = malloc(ring_buffer_size);
+    
+  Err = cuMemcpyDtoH(&fetched_stack, DeviceData[DeviceID].StackTraceBuffer,  
+    ring_buffer_size);
+  if (Err != CUDA_SUCCESS) {
+    REPORT("Error when copying initial stack trace buffer host to device.");
+    CUDA_ERR_STRING(Err);
+    return nullptr;
+  }
+
+  while (!fetched_stack->is_empty) {
+    omp_stack_trace_pop(&x);
+    StackTraceContents.push_back(x);
+  }
+
+  free(fetched_stack);
 }
 
 #ifdef __cplusplus

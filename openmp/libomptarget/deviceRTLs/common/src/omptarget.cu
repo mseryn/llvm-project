@@ -162,12 +162,43 @@ EXTERN int8_t __kmpc_is_spmd_exec_mode() {
 
 // Push and pull operations for device stack trace
 // TODO need to modify for actual datatype that will be used
-EXTERN void omp_stack_trace_push(uint32_t data) {
-  StackTraceBuffer.push(data);
+EXTERN void omp_stack_trace_push(int32_t data) {
+  ring->is_empty = false;
+  ring->buffer[ring->head] = data;
+  
+  // If buffer is full, wrap tail back to 0 if applicable
+  if (ring->is_full) {
+    if (++(ring->tail) == ring->capacity) {
+      ring->tail = 0;
+    }
+  }
+  // Also wrap the head if applicable
+  if (++(ring->head) == ring->capacity) {
+    ring->head = 0;
+  }
+
+  // Recalculate full status of buffer
+  ring->is_full = (ring->head == ring->tail);
 }
 
-EXTERN void omp_stack_trace_pop(uint32_t * data) {
-  *data = StackTraceBuffer.pop();
+EXTERN int omp_stack_trace_pop(int32_t * data) {
+  // Returns 1 if buffer empty, 0 otherwise
+  int ret  = 1;
+  if (!ring->is_empty) {
+    // Set the data to the tail
+    if (ring->head == 0) {
+      ring->head = ring->capacity;
+    }
+    ring->head--;
+    *data = ring->buffer[ring->head];
+
+    // Overwrite full status boolean
+    ring->is_full = false;
+
+    ring->is_empty = (ring->head == ring->tail);
+    ret = 0;
+  }
+  return ret;
 }
 
 #pragma omp end declare target

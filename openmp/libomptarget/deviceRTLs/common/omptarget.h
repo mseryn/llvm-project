@@ -341,50 +341,14 @@ INLINE uint32_t __kmpc_impl_popc(uint64_t x) { return __builtin_popcountl(x); }
 ////////////////////////////////////////////////////////////////////////////////
 // device stack trace components
 ////////////////////////////////////////////////////////////////////////////////
-template <class T>
-class RingBuffer {
-public:
-  explicit RingBuffer(size_t size) :
-    buf_(std::unique_ptr<T[]>(new T[size])),
-    max_size_(size)
-  { //empty constructor
-// todo - memset contents
-  }
-
-  void push(T item) {
-    buf_[head_] = item;
-    if(full_) {
-      tail_ = (tail_ + 1) % max_size_;
-    }
-
-    head_ = (head_ + 1) % max_size_;
-    full_ = head_ == tail_;
-  }
-
-  T pop() {
-    if(!full_ && (head_ == tail_)) {
-      return T();
-    }
-
-    auto val = buf_[tail_];
-    full_ = false;
-    tail_ = (tail_ + 1) % max_size_;
-
-    return val;
-  }
-  bool empty() const
-  {
-    return (!full_ && (head_ == tail_));
-  }
-
-private:
-  std::unique_ptr<T[]> buf_;
-  size_t head_ = 0;
-  size_t tail_ = 0;
-  const size_t max_size_;
-  bool full_ = 0;
-};
-
+typedef struct ring_buffer_t {
+  size_t head;
+  size_t tail;
+  size_t capacity;
+  bool is_full;
+  bool is_empty;
+  int32_t buffer[];
+} ring_buffer_t;
 
 #include "common/omptargeti.h"
 

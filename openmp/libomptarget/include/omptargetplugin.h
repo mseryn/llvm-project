@@ -142,6 +142,9 @@ int32_t __tgt_rtl_synchronize(int32_t ID, __tgt_async_info *AsyncInfo);
 // Set plugin's internal information flag externally.
 void __tgt_rtl_set_info_flag(uint32_t);
 
+// Get stack trace, put into vector
+void __tgt_rtl_get_stack_trace_vector(int32_t device_id, std::vector<int32_t> StackTraceContents);
+
 #ifdef __cplusplus
 }
 #endif

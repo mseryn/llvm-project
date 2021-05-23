@@ -14,9 +14,12 @@
 #define _OMPTARGET_DEVICE_ENVIRONMENT_H_
 
 #include "target_impl.h"
+#include "omptarget.h"
 
 struct omptarget_device_environmentTy {
   int32_t debug_level;
+  
+  ring_buffer_t * StackTraceBuffer;
 };
 
 extern omptarget_device_environmentTy omptarget_device_environment;
