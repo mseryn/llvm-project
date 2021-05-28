@@ -161,10 +161,10 @@ EXTERN int8_t __kmpc_is_spmd_exec_mode() {
 }
 
 // Push and pull operations for device stack trace
-// TODO need to modify for actual datatype that will be used
 EXTERN void omp_stack_trace_push(int32_t data) {
+#define ring omptarget_device_environment.StackTraceBuffer
   ring->is_empty = false;
-  ring->buffer[ring->head] = data;
+  (&(ring->buffer))[ring->head] = data;
   
   // If buffer is full, wrap tail back to 0 if applicable
   if (ring->is_full) {
@@ -179,9 +179,11 @@ EXTERN void omp_stack_trace_push(int32_t data) {
 
   // Recalculate full status of buffer
   ring->is_full = (ring->head == ring->tail);
+#undef ring
 }
 
 EXTERN int omp_stack_trace_pop(int32_t * data) {
+#define ring omptarget_device_environment.StackTraceBuffer
   // Returns 1 if buffer empty, 0 otherwise
   int ret  = 1;
   if (!ring->is_empty) {
@@ -190,7 +192,7 @@ EXTERN int omp_stack_trace_pop(int32_t * data) {
       ring->head = ring->capacity;
     }
     ring->head--;
-    *data = ring->buffer[ring->head];
+    *data = (&(ring->buffer))[ring->head];
 
     // Overwrite full status boolean
     ring->is_full = false;
@@ -198,6 +200,7 @@ EXTERN int omp_stack_trace_pop(int32_t * data) {
     ring->is_empty = (ring->head == ring->tail);
     ret = 0;
   }
+#undef ring
   return ret;
 }
 

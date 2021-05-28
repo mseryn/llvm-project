@@ -338,18 +338,6 @@ INLINE uint32_t __kmpc_impl_popc(uint32_t x) { return __builtin_popcount(x); }
 INLINE uint32_t __kmpc_impl_ffs(uint64_t x) { return __builtin_ffsl(x); }
 INLINE uint32_t __kmpc_impl_popc(uint64_t x) { return __builtin_popcountl(x); }
 
-////////////////////////////////////////////////////////////////////////////////
-// device stack trace components
-////////////////////////////////////////////////////////////////////////////////
-typedef struct ring_buffer_t {
-  size_t head;
-  size_t tail;
-  size_t capacity;
-  bool is_full;
-  bool is_empty;
-  int32_t buffer[];
-} ring_buffer_t;
-
 #include "common/omptargeti.h"
 
 #endif
