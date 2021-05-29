@@ -111,7 +111,6 @@ struct KernelTy {
 struct omptarget_device_environmentTy {
   int32_t debug_level;
   ring_buffer_t * StackTraceBuffer;
-  // TODO fix casing
 };
 
 namespace {
@@ -689,6 +688,7 @@ public:
     initial_stack->is_full = false;
     initial_stack->capacity = buffer_capacity;
     initial_stack->is_empty = true;
+    omp_stack_trace_push(5, initial_stack);
 
     //TODO remove debug
     printf("head: %i\ntail: %i\ncapacity: %i\nempty: %d\n",
@@ -1022,7 +1022,6 @@ public:
 
     printf("before entering function to print stack trace, in team region\n");
     printStackTrace(DeviceId);
-//    __tgt_rtl_get_stack_trace_vector(DeviceId);
     printf("after entering function to print stack trace, in team region\n");
 
     // All args are references.
@@ -1156,7 +1155,7 @@ public:
 
   // Using the ring buffer for the stack trace
   // Where do these go? TODO
-  void omp_stack_trace_push(int32_t DeviceId, int32_t data, ring_buffer_t * ring) const {
+  void omp_stack_trace_push(int32_t data, ring_buffer_t * ring) const {
     ring->is_empty = false;
     ring->buffer[ring->head] = data;
     
@@ -1176,7 +1175,7 @@ public:
   }
 
   // Functions to use stack trace buffer - where do these go? TODO
-  int omp_stack_trace_pop(int32_t DeviceId, ring_buffer_t * ring, int32_t * data) const {
+  int omp_stack_trace_pop(ring_buffer_t * ring, int32_t * data) const {
     int ret  = 1;
     printf("in stack pop, checking if ring is empty\n");
     printf("%i is the value of head\n", ring->head);
@@ -1234,7 +1233,7 @@ public:
     }
     while (!fetched_stack->is_empty) {
       printf("stack trace printer, fetching an element from the device buff\n");
-      omp_stack_trace_pop(DeviceId, fetched_stack, &x);
+      omp_stack_trace_pop(fetched_stack, &x);
       printf("stack trace printer, fetched an element from the device buff\n");
       printf("%i\n", x);
     }
