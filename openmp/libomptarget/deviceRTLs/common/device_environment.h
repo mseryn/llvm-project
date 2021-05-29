@@ -20,9 +20,9 @@
 // device stack trace components
 ////////////////////////////////////////////////////////////////////////////////
 typedef struct ring_buffer_t {
-  size_t head;
-  size_t tail;
-  size_t capacity;
+  int32_t head;
+  int32_t tail;
+  int32_t capacity;
   bool is_full;
   bool is_empty;
   int32_t buffer; // This is actually an array of int32_t, but cuda doesn't support the dynamically sized array notation here.

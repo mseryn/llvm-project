@@ -27,9 +27,9 @@
 // device stack trace components
 ////////////////////////////////////////////////////////////////////////////////
 typedef struct ring_buffer_t {
-  size_t head;
-  size_t tail;
-  size_t capacity;
+  int32_t head;
+  int32_t tail;
+  int32_t capacity;
   bool is_full;
   bool is_empty;
   int32_t buffer[];
@@ -678,7 +678,7 @@ public:
 
     // Allocating stack trace buffer on device
     int buffer_capacity = 15;
-    size_t ring_buffer_size = sizeof(ring_buffer_t) + sizeof(int64_t) * buffer_capacity;
+    size_t ring_buffer_size = sizeof(ring_buffer_t) + sizeof(int32_t) * buffer_capacity;
     DeviceData[DeviceId].StackBufferPtr = (CUdeviceptr) dataAlloc(DeviceId, ring_buffer_size, 
       TARGET_ALLOC_DEVICE);
 
@@ -689,15 +689,20 @@ public:
     initial_stack->is_full = false;
     initial_stack->capacity = buffer_capacity;
     initial_stack->is_empty = true;
+
+    //TODO remove debug
+    printf("head: %i\ntail: %i\ncapacity: %i\nempty: %d\n",
+      initial_stack->head, initial_stack->tail, initial_stack->capacity,
+      initial_stack->is_empty);
     
-    Err = cuMemcpyHtoD(DeviceData[DeviceId].StackBufferPtr, &initial_stack, 
+    Err = cuMemcpyHtoD(DeviceData[DeviceId].StackBufferPtr, initial_stack, 
       ring_buffer_size);
     if (Err != CUDA_SUCCESS) {
       REPORT("Error when copying initial stack trace buffer host to device.");
       CUDA_ERR_STRING(Err);
     }
-    //free(initial_stack);
-
+    free(initial_stack);
+      
     return OFFLOAD_SUCCESS;
   }
 
@@ -1174,21 +1179,22 @@ public:
   int omp_stack_trace_pop(int32_t DeviceId, ring_buffer_t * ring, int32_t * data) const {
     int ret  = 1;
     printf("in stack pop, checking if ring is empty\n");
-    printf("%zu is the value of head\n", ring->head);
+    printf("%i is the value of head\n", ring->head);
+    printf("%i is the value of tail\n", ring->tail);
     if (!ring->is_empty) {
       // Set the data to the tail
       printf("in stack pop, checking if head is 0\n");
-      printf("%zu is the value of head\n", ring->head);
+      printf("%i is the value of head\n", ring->head);
       if (ring->head == 0) {
         printf("in stack pop, setting head to cap if head is 0\n");
-        printf("%zu is the value of head\n", ring->head);
+        printf("%i is the value of head\n", ring->head);
         ring->head = ring->capacity;
       }
       printf("in stack pop, dec head\n");
       ring->head--;
       printf("in stack pop, set value of buffer at head to data\n");
-      printf("%zu is the value of head\n", ring->head);
-      printf("%zu is the value of capacity\n", ring->capacity);
+      printf("%i is the value of head\n", ring->head);
+      printf("%i is the value of capacity\n", ring->capacity);
       printf("%i is the value of ring buffer at head\n", ring->buffer[ring->head]);
       *data = ring->buffer[ring->head];
 
@@ -1219,6 +1225,9 @@ public:
       ring_buffer_size);
 
     printf("stack trace printer, fetched the device buff\n");
+    printf("head: %i\ntail: %i\ncapacity: %i\nempty: %d\n",
+      fetched_stack->head, fetched_stack->tail, fetched_stack->capacity,
+      fetched_stack->is_empty);
   
     if (fetched_stack->is_empty) {
       printf("The stack is empty\n");
