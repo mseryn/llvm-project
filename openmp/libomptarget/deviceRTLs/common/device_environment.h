@@ -25,7 +25,7 @@ typedef struct ring_buffer_t {
   int32_t capacity;
   bool is_full;
   bool is_empty;
-  int32_t buffer; // This is actually an array of int32_t, but cuda doesn't support the dynamically sized array notation here.
+  int32_t buffer; // This is actually an array of int64_t, but cuda doesn't support the dynamically sized array notation here.
 } ring_buffer_t;
 
 struct omptarget_device_environmentTy {

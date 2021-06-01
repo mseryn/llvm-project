@@ -161,7 +161,7 @@ EXTERN int8_t __kmpc_is_spmd_exec_mode() {
 }
 
 // Push and pull operations for device stack trace
-EXTERN void omp_stack_trace_push(int32_t data) {
+EXTERN void omp_stack_trace_push(int64_t data) {
 #define ring omptarget_device_environment.StackTraceBuffer
   ring->is_empty = false;
   (&(ring->buffer))[ring->head] = data;
@@ -182,7 +182,7 @@ EXTERN void omp_stack_trace_push(int32_t data) {
 #undef ring
 }
 
-EXTERN int omp_stack_trace_pop(int32_t * data) {
+EXTERN int omp_stack_trace_pop(int64_t * data) {
 #define ring omptarget_device_environment.StackTraceBuffer
   // Returns 1 if buffer empty, 0 otherwise
   int ret  = 1;

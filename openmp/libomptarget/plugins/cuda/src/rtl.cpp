@@ -32,7 +32,7 @@ typedef struct ring_buffer_t {
   int32_t capacity;
   bool is_full;
   bool is_empty;
-  int32_t buffer[];
+  int64_t buffer[];
 } ring_buffer_t;
 
 
@@ -677,7 +677,7 @@ public:
 
     // Allocating stack trace buffer on device
     int buffer_capacity = 15;
-    size_t ring_buffer_size = sizeof(ring_buffer_t) + sizeof(int32_t) * buffer_capacity;
+    size_t ring_buffer_size = sizeof(ring_buffer_t) + sizeof(int64_t) * buffer_capacity;
     DeviceData[DeviceId].StackBufferPtr = (CUdeviceptr) dataAlloc(DeviceId, ring_buffer_size, 
       TARGET_ALLOC_DEVICE);
 
@@ -688,12 +688,15 @@ public:
     initial_stack->is_full = false;
     initial_stack->capacity = buffer_capacity;
     initial_stack->is_empty = true;
-    omp_stack_trace_push(5, initial_stack);
+    //TODO remove debug
+//    omp_stack_trace_push(5, initial_stack);
 
     //TODO remove debug
+/*
     printf("head: %i\ntail: %i\ncapacity: %i\nempty: %d\n",
       initial_stack->head, initial_stack->tail, initial_stack->capacity,
       initial_stack->is_empty);
+*/
     
     Err = cuMemcpyHtoD(DeviceData[DeviceId].StackBufferPtr, initial_stack, 
       ring_buffer_size);
@@ -1020,9 +1023,8 @@ public:
     if (!checkResult(Err, "Error returned from cuCtxSetCurrent\n"))
       return OFFLOAD_FAIL;
 
-    printf("before entering function to print stack trace, in team region\n");
-    printStackTrace(DeviceId);
-    printf("after entering function to print stack trace, in team region\n");
+    //TODO remove this it's going to break everything
+    return OFFLOAD_FAIL;
 
     // All args are references.
     std::vector<void *> Args(ArgNum);
@@ -1155,7 +1157,7 @@ public:
 
   // Using the ring buffer for the stack trace
   // Where do these go? TODO
-  void omp_stack_trace_push(int32_t data, ring_buffer_t * ring) const {
+  void omp_stack_trace_push(int64_t data, ring_buffer_t * ring) const {
     ring->is_empty = false;
     ring->buffer[ring->head] = data;
     
@@ -1175,33 +1177,33 @@ public:
   }
 
   // Functions to use stack trace buffer - where do these go? TODO
-  int omp_stack_trace_pop(ring_buffer_t * ring, int32_t * data) const {
+  int omp_stack_trace_pop(ring_buffer_t * ring, int64_t * data) const {
     int ret  = 1;
-    printf("in stack pop, checking if ring is empty\n");
-    printf("%i is the value of head\n", ring->head);
-    printf("%i is the value of tail\n", ring->tail);
+//    printf("in stack pop, checking if ring is empty\n");
+//    printf("%i is the value of head\n", ring->head);
+//    printf("%i is the value of tail\n", ring->tail);
     if (!ring->is_empty) {
       // Set the data to the tail
-      printf("in stack pop, checking if head is 0\n");
-      printf("%i is the value of head\n", ring->head);
+//      printf("in stack pop, checking if head is 0\n");
+//      printf("%i is the value of head\n", ring->head);
       if (ring->head == 0) {
-        printf("in stack pop, setting head to cap if head is 0\n");
-        printf("%i is the value of head\n", ring->head);
+//        printf("in stack pop, setting head to cap if head is 0\n");
+//        printf("%i is the value of head\n", ring->head);
         ring->head = ring->capacity;
       }
-      printf("in stack pop, dec head\n");
+//      printf("in stack pop, dec head\n");
       ring->head--;
-      printf("in stack pop, set value of buffer at head to data\n");
-      printf("%i is the value of head\n", ring->head);
-      printf("%i is the value of capacity\n", ring->capacity);
-      printf("%i is the value of ring buffer at head\n", ring->buffer[ring->head]);
+//      printf("in stack pop, set value of buffer at head to data\n");
+//      printf("%i is the value of head\n", ring->head);
+//      printf("%i is the value of capacity\n", ring->capacity);
+//      printf("%i is the value of ring buffer at head\n", ring->buffer[ring->head]);
       *data = ring->buffer[ring->head];
 
       // Overwrite full status boolean
-      printf("in stack pop, overwrite buffer so it isnt full\n");
+//      printf("in stack pop, overwrite buffer so it isnt full\n");
       ring->is_full = false;
 
-      printf("in stack pop, set empty if empty\n");
+//      printf("in stack pop, set empty if empty\n");
       ring->is_empty = (ring->head == ring->tail);
       ret = 0;
     }
@@ -1211,9 +1213,7 @@ public:
   // Printing the values of the stack trace
   void printStackTrace(const int DeviceId) const {
     printf("stack trace printer, before anything\n");
-    int32_t x = 0;
-    // TODO get array of values for function names, how?
-    // global variable called __omp_stack_trace_data I think
+    int64_t x = 0;
     int buffer_capacity = 15;
     size_t ring_buffer_size = sizeof(ring_buffer_t) + sizeof(int32_t) * buffer_capacity;
   
@@ -1241,6 +1241,19 @@ public:
     printf("about to free stack trace printer\n");
     free(fetched_stack);
     printf("freed stack trace printer\n");
+/*
+This is how we fetch a global, use to get list of func name strings
+global variable called __omp_stack_trace_data I think
+      // default value GENERIC (in case symbol is missing from cubin file)
+      int8_t ExecModeVal = ExecutionModeType::GENERIC;
+      std::string ExecModeNameStr(E->name);
+      ExecModeNameStr += "_exec_mode";
+      const char *ExecModeName = ExecModeNameStr.c_str();
+
+      CUdeviceptr ExecModePtr;
+      size_t CUSize;
+      Err = cuModuleGetGlobal(&ExecModePtr, &CUSize, Module, ExecModeName);
+*/
   };
 };
 
@@ -1396,9 +1409,18 @@ int32_t __tgt_rtl_run_target_team_region_async(
     __tgt_async_info *async_info_ptr) {
   assert(DeviceRTL.isValidDeviceId(device_id) && "device_id is invalid");
 
-  return DeviceRTL.runTargetTeamRegion(
+  printf("in run_target_team_region_async\n");
+  int rc = DeviceRTL.runTargetTeamRegion(
       device_id, tgt_entry_ptr, tgt_args, tgt_offsets, arg_num, team_num,
       thread_limit, loop_tripcount, async_info_ptr);
+  if (rc != OFFLOAD_SUCCESS) {
+    //TODO remove debug
+    // THIS is where we can actually trigger and see a fail, though it's not handled by checkResult
+    printf("now we have seen non-success in team region async\n");
+    __tgt_rtl_get_stack_trace_vector(device_id);
+  }
+  else {printf("just more success\n");}
+  return rc;
 }
 
 int32_t __tgt_rtl_run_target_region(int32_t device_id, void *tgt_entry_ptr,
@@ -1446,6 +1468,8 @@ void __tgt_rtl_set_info_flag(uint32_t NewInfoLevel) {
 // Get device's stack trace and print the values
 void __tgt_rtl_get_stack_trace_vector(int32_t device_id) {
   assert(DeviceRTL.isValidDeviceId(device_id) && "device_id is invalid");
+  //TODO remove debug
+  printf("in device stack print caller\n");
 
   DeviceRTL.printStackTrace(device_id);
 }
