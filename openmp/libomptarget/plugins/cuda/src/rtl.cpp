@@ -697,6 +697,7 @@ public:
       initial_stack->head, initial_stack->tail, initial_stack->capacity,
       initial_stack->is_empty);
 */
+    printf("initial stack pointer is: %llu\n", DeviceData[DeviceId].StackBufferPtr);
     
     Err = cuMemcpyHtoD(DeviceData[DeviceId].StackBufferPtr, initial_stack, 
       ring_buffer_size);
@@ -1024,7 +1025,8 @@ public:
       return OFFLOAD_FAIL;
 
     //TODO remove this it's going to break everything
-    return OFFLOAD_FAIL;
+    //return OFFLOAD_FAIL;
+    printStackTrace(DeviceId);
 
     // All args are references.
     std::vector<void *> Args(ArgNum);
@@ -1212,6 +1214,7 @@ public:
 
   // Printing the values of the stack trace
   void printStackTrace(const int DeviceId) const {
+    printf("stack pointer inside print function is: %llu\n", DeviceData[DeviceId].StackBufferPtr);
     printf("stack trace printer, before anything\n");
     int64_t x = 0;
     int buffer_capacity = 15;
@@ -1228,6 +1231,7 @@ public:
       fetched_stack->head, fetched_stack->tail, fetched_stack->capacity,
       fetched_stack->is_empty);
   
+/*
     if (fetched_stack->is_empty) {
       printf("The stack is empty\n");
     }
@@ -1235,7 +1239,16 @@ public:
       printf("stack trace printer, fetching an element from the device buff\n");
       omp_stack_trace_pop(fetched_stack, &x);
       printf("stack trace printer, fetched an element from the device buff\n");
-      printf("%i\n", x);
+      printf("%li\n", x);
+    }
+*/
+    int i = 0;
+    while (i < 15) {
+      printf("stack trace printer, fetching an element from the device buff\n");
+      omp_stack_trace_pop(fetched_stack, &x);
+      printf("stack trace printer, fetched an element from the device buff\n");
+      printf("%li\n", x);
+      i++;
     }
   
     printf("about to free stack trace printer\n");
@@ -1409,17 +1422,16 @@ int32_t __tgt_rtl_run_target_team_region_async(
     __tgt_async_info *async_info_ptr) {
   assert(DeviceRTL.isValidDeviceId(device_id) && "device_id is invalid");
 
+  //TODO remove debug
   printf("in run_target_team_region_async\n");
   int rc = DeviceRTL.runTargetTeamRegion(
       device_id, tgt_entry_ptr, tgt_args, tgt_offsets, arg_num, team_num,
       thread_limit, loop_tripcount, async_info_ptr);
   if (rc != OFFLOAD_SUCCESS) {
-    //TODO remove debug
     // THIS is where we can actually trigger and see a fail, though it's not handled by checkResult
-    printf("now we have seen non-success in team region async\n");
+//    printf("now we have seen non-success in team region async\n");
     __tgt_rtl_get_stack_trace_vector(device_id);
   }
-  else {printf("just more success\n");}
   return rc;
 }
 

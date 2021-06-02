@@ -22,6 +22,8 @@ extern omptarget_nvptx_Queue<omptarget_nvptx_ThreadPrivateContext,
                              OMP_STATE_COUNT>
     omptarget_nvptx_device_State[MAX_SM];
 
+ring_buffer_t *omptarget_stack_trace_buffer;
+
 ////////////////////////////////////////////////////////////////////////////////
 // init entry points
 ////////////////////////////////////////////////////////////////////////////////
@@ -161,47 +163,39 @@ EXTERN int8_t __kmpc_is_spmd_exec_mode() {
 }
 
 // Push and pull operations for device stack trace
-EXTERN void omp_stack_trace_push(int64_t data) {
-#define ring omptarget_device_environment.StackTraceBuffer
-  ring->is_empty = false;
-  (&(ring->buffer))[ring->head] = data;
+EXTERN void __attribute__((used)) omp_stack_trace_push(int64_t data) {
+  omptarget_device_environment.StackTraceBuffer->is_empty = false;
+  (&(omptarget_device_environment.StackTraceBuffer->buffer))[omptarget_device_environment.StackTraceBuffer->head] = data;
   
   // If buffer is full, wrap tail back to 0 if applicable
-  if (ring->is_full) {
-    if (++(ring->tail) == ring->capacity) {
-      ring->tail = 0;
+  if (omptarget_device_environment.StackTraceBuffer->is_full) {
+    if (++(omptarget_device_environment.StackTraceBuffer->tail) == omptarget_device_environment.StackTraceBuffer->capacity) {
+      omptarget_device_environment.StackTraceBuffer->tail = 0;
     }
   }
   // Also wrap the head if applicable
-  if (++(ring->head) == ring->capacity) {
-    ring->head = 0;
+  if (++(omptarget_device_environment.StackTraceBuffer->head) == omptarget_device_environment.StackTraceBuffer->capacity) {
+    omptarget_device_environment.StackTraceBuffer->head = 0;
   }
 
   // Recalculate full status of buffer
-  ring->is_full = (ring->head == ring->tail);
-#undef ring
+  omptarget_device_environment.StackTraceBuffer->is_full = (omptarget_device_environment.StackTraceBuffer->head == omptarget_device_environment.StackTraceBuffer->tail);
 }
 
-EXTERN int omp_stack_trace_pop(int64_t * data) {
-#define ring omptarget_device_environment.StackTraceBuffer
-  // Returns 1 if buffer empty, 0 otherwise
-  int ret  = 1;
-  if (!ring->is_empty) {
+//EXTERN void __attribute__((used)) omp_stack_trace_pop(int64_t * data) {
+EXTERN void __attribute__((used)) omp_stack_trace_pop() {
+  if (!omptarget_device_environment.StackTraceBuffer->is_empty) {
     // Set the data to the tail
-    if (ring->head == 0) {
-      ring->head = ring->capacity;
+    if (omptarget_device_environment.StackTraceBuffer->head == 0) {
+      omptarget_device_environment.StackTraceBuffer->head = omptarget_device_environment.StackTraceBuffer->capacity;
     }
-    ring->head--;
-    *data = (&(ring->buffer))[ring->head];
+    omptarget_device_environment.StackTraceBuffer->head--;
 
     // Overwrite full status boolean
-    ring->is_full = false;
+    omptarget_device_environment.StackTraceBuffer->is_full = false;
 
-    ring->is_empty = (ring->head == ring->tail);
-    ret = 0;
+    omptarget_device_environment.StackTraceBuffer->is_empty = (omptarget_device_environment.StackTraceBuffer->head == omptarget_device_environment.StackTraceBuffer->tail);
   }
-#undef ring
-  return ret;
 }
 //EXTERN void __attribute__((used))
 //omp_stack_trace_push(uint64_t Index) {}

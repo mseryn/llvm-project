@@ -30,7 +30,6 @@ typedef struct ring_buffer_t {
 
 struct omptarget_device_environmentTy {
   int32_t debug_level;
-  
   ring_buffer_t * StackTraceBuffer;
 };
 
