@@ -57,6 +57,7 @@ struct RTLInfoTy {
   typedef int32_t(supports_empty_images_ty)();
   typedef void(set_info_flag_ty)(uint32_t);
   typedef uint64_t(get_stack_trace_ty)();
+  //typedef void(get_stack_trace_ty)();
 
   int32_t Idx = -1;             // RTL index, index is the number of devices
                                 // of other RTLs that were registered before,
