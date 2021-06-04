@@ -1275,18 +1275,8 @@ private:
           }
 
           // If the string is already added, get its index. Otherwise add it.
-<<<<<<< HEAD
-<<<<<<< HEAD
           auto &Index = SrcLocInds[Buffer.str().str()];
-=======
-          auto &Index = SrcLocInds[Buffer];
->>>>>>> [OpenMP] Add interface for creating stack traces on the device
-=======
-          auto &Index = SrcLocInds[Buffer];
-=======
-          auto &Index = SrcLocInds[Buffer.str().str()];
->>>>>>> 7aa6b13a4380... [OpenMP] Add interface for creating stack traces on the device
->>>>>>> resolving cherry-pick conflicts
+          //auto &Index = SrcLocInds[Buffer];
           if (!Index) {
             Index = CurInd;
             CurInd += Buffer.size() + 1;
