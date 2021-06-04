@@ -1275,12 +1275,8 @@ private:
           }
 
           // If the string is already added, get its index. Otherwise add it.
-<<<<<<< HEAD
           auto &Index = SrcLocInds[Buffer.str().str()];
           //auto &Index = SrcLocInds[Buffer];
-=======
-          auto &Index = SrcLocInds[Buffer];
->>>>>>> d5116eac621e7b0c99d47d3412b227b0919d3dfe
           if (!Index) {
             Index = CurInd;
             CurInd += Buffer.size() + 1;
