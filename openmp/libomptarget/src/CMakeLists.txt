@@ -26,13 +26,16 @@ include_directories(${LIBOMPTARGET_LLVM_INCLUDE_DIRS})
 
 # Build libomptarget library with libdl dependency.
 add_library(omptarget SHARED ${LIBOMPTARGET_SRC_FILES})
+llvm_update_compile_flags(omptarget)
+target_compile_definitions(omptarget PUBLIC OMPTARGET_PROFILE_ENABLED)
+target_link_libraries(omptarget PRIVATE LLVMSupport LLVMDemangle)
 if (OPENMP_ENABLE_LIBOMPTARGET_PROFILING)
   # Add LLVMSupport dependency if profiling is enabled.
   # Linking with LLVM component libraries also requires
   # aligning the compile flags.
   llvm_update_compile_flags(omptarget)
   target_compile_definitions(omptarget PUBLIC OMPTARGET_PROFILE_ENABLED)
-  target_link_libraries(omptarget PRIVATE LLVMSupport)
+  target_link_libraries(omptarget PRIVATE LLVMSupport LLVMDemangle)
 endif()
 target_link_libraries(omptarget PRIVATE
   ${CMAKE_DL_LIBS}
